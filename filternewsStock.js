@@ -4,10 +4,29 @@ const htmlparser = require("htmlparser2")
 const fs = require('fs')
 const path = require('path')
 const fetch = require('node-fetch')
-let showAll  = (process.argv.indexOf('all') > -1)
 const urlnews =  'https://www.set.or.th/set/companynews.do?ssoPageId=8&language=th&country=TH'
-const stockName = 'PIMO'
-// example of paranews  '&symbol=PIMO&currentpage=0'
+
+const optionDefinitions = [
+  { name: 'all', alias: 'a', type: Boolean, defaultOption: false },
+  { name: 'stock', alias: 's', type: String }
+]
+
+let stockName = 'XO'
+
+const commandLineArgs = require('command-line-args')
+const options = commandLineArgs(optionDefinitions)
+
+console.log(options)
+
+if (options.stock) {
+  stockName = options.stock.toUpperCase()
+} else {
+  console.log('Error : require parameter stock name [-s PIMO] or [--stock PIMO]')
+  return
+}
+
+const showAll  = (options.all === true)
+
 
 function wrapHtmlParser (html,intPage) {
 
@@ -65,7 +84,7 @@ function wrapHtmlParser (html,intPage) {
                         //const strTitle =  textintd[4].data.trim()
 
                         //console.log(textintd)
-                        const rowString = `Page ${intPage}-${itr} / ${strTime} ${strSymbol} ${strTitle}`
+                        const rowString = `Page ${intPage+1}-${itr} / ${strTime} ${strSymbol} ${strTitle}`
 
                         //console.log(rowString)
                         //|| rowString.match(regex4)

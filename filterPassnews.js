@@ -71,7 +71,7 @@ function wrapHtmlParser (html,intPage) {
                         const strTitle =  textintd[4].data.trim()
 
                         //console.log(textintd)
-                        const rowString = `Page ${intPage}-${itr} / ${strTime} ${strSymbol} ${strSource} ${strTitle}`
+                        const rowString = `Page ${intPage+1}-${itr} / ${strTime} ${strSymbol} ${strSource} ${strTitle}`
                         const isDWSETTSDmai = (strSymbol.match(regexDW) || strSymbol.match(regexSET) || strSymbol.match(regexTSD) || strSymbol.match(regexmai)  )? true : false
 
                         //|| rowString.match(regex4)
