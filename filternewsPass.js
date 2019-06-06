@@ -1,38 +1,27 @@
-//https://www.set.or.th/set/companynews.do?symbol=PIMO&ssoPageId=8&language=th&country=TH
-//https://www.set.or.th/set/companynews.do?symbol=PIMO&language=th&ssoPageId=8&country=TH&currentpage=0
+//https://www.set.or.th/set/newslist.do?headline=&to=27%2F05%2F2019&source=&symbol=&submit=%E0%B8%84%E0%B9%89%E0%B8%99%E0%B8%AB%E0%B8%B2&newsGroupId=&securityType=&from=20%2F05%2F2019&language=th&currentpage=1&country=TH
 const htmlparser = require("htmlparser2")
 const fs = require('fs')
 const path = require('path')
 const fetch = require('node-fetch')
-const urlnews =  'https://www.set.or.th/set/companynews.do?ssoPageId=8&language=th&country=TH'
+let showAll  = (process.argv.indexOf('all') > -1)
+const urlnews =  'https://www.set.or.th/set/newslist.do?headline=&source=&symbol=&submit=%E0%B8%84%E0%B9%89%E0%B8%99%E0%B8%AB%E0%B8%B2&newsGroupId=&securityType=&language=th&country=TH'
+// example of paranews  '&to=27%2F05%2F2019&from=20%2F05%2F2019&currentpage=58'
+let yesterdayDate = new Date()
+yesterdayDate.setDate(yesterdayDate.getDate()-1);
+let passdaysDate = new Date()
+passdaysDate.setDate(passdaysDate.getDate()-6);
 
-const optionDefinitions = [
-  { name: 'all', alias: 'a', type: Boolean, defaultOption: false },
-  { name: 'stock', alias: 's', type: String }
-]
+let fd=passdaysDate.getDate(), fm=passdaysDate.getMonth()+1 ,fy=passdaysDate.getFullYear()
+let td=yesterdayDate.getDate(), tm=yesterdayDate.getMonth()+1 ,ty=yesterdayDate.getFullYear()
 
-let stockName = 'XO'
-
-const commandLineArgs = require('command-line-args')
-const options = commandLineArgs(optionDefinitions)
-
-console.log(options)
-
-if (options.stock) {
-  stockName = options.stock.toUpperCase()
-} else {
-  console.log('Error : require parameter stock name [-s PIMO] or [--stock PIMO]')
-  return
-}
-
-const showAll  = (options.all === true)
-
+// let fd=yesterdayDate.getDate(), fm=yesterdayDate.getMonth()+1 ,fy=yesterdayDate.getFullYear()
+// let td=passdaysDate.getDate(), tm=passdaysDate.getMonth()+1 ,ty=passdaysDate.getFullYear()
 
 function wrapHtmlParser (html,intPage) {
 
   const handler = new htmlparser.DomHandler(function (error, dom) {
     if (error)
-      console.error(error)
+      console.error('error in DomHandler')
     else {
 
      let alltr = htmlparser.DomUtils.find( (el)=> {
@@ -40,8 +29,6 @@ function wrapHtmlParser (html,intPage) {
           },dom, true, 1000
       )
 
-      //console.log('alltr.lenth=', alltr.length)
-      //lastResultRows = alltr.length
 
       const regexDW = /\d\d\d\d\w/
       const regexSET = /SET/
@@ -76,22 +63,22 @@ function wrapHtmlParser (html,intPage) {
                       )
 
                       //console.log('textintd.lenth=', textintd.length)
-                      if(textintd.length >= 7){
+                      if(textintd.length >= 8){
 
                         const strTime =  textintd[0].data.trim()
                         const strSymbol =  textintd[2].data.trim()
-                        const strTitle =  textintd[3].data.trim()
-                        //const strTitle =  textintd[4].data.trim()
+                        const strSource =  textintd[3].data.trim()
+                        const strTitle =  textintd[4].data.trim()
 
                         //console.log(textintd)
-                        const rowString = `Page ${intPage+1}-${itr} / ${strTime} ${strSymbol} ${strTitle}`
+                        const rowString = `Page ${intPage+1}-${itr} / ${strTime} ${strSymbol} ${strSource} ${strTitle}`
+                        const isDWSETTSDmai = (strSymbol.match(regexDW) || strSymbol.match(regexSET) || strSymbol.match(regexTSD) || strSymbol.match(regexmai)  )? true : false
 
-                        //console.log(rowString)
                         //|| rowString.match(regex4)
-                        if (showAll || strTitle.match(regex1) || strTitle.match(regex2) || 
-                              strTitle.match(regex3) || strTitle.match(regex4) || strTitle.match(regex5) || 
-                              strTitle.match(regex6) || strTitle.match(regex7)
-                               )  { 
+                        if ( (showAll || strTitle.match(regex1) || strTitle.match(regex2) || 
+                              strTitle.match(regex3) || strTitle.match(regex4) || strTitle.match(regex5)||
+                              strTitle.match(regex6) || strTitle.match(regex7) ) 
+                              && !isDWSETTSDmai )  { 
                           console.log(rowString)
                         }
 
@@ -111,19 +98,24 @@ function wrapHtmlParser (html,intPage) {
 }
 
 function substringTogetPageNumber(body){
-
+    //console.log(body)
     const str1 = '<strong>รวม'
     const str2 = 'หัวข้อข่าว</strong>'
     const posStart = body.indexOf(str1) + str1.length
     const posEnd = body.indexOf(str2,posStart)
+    if(posEnd < posStart) throw 'Cannot find Total Page in function substringTogetPageNumber'
     const strNumberOfNews = body.slice(posStart,posEnd).trim().replace(/,/g,'')
     const intNumberOfPage = Math.ceil(parseInt(strNumberOfNews)/20)
 
+    console.log(strNumberOfNews.slice(0,13),'news',intNumberOfPage,'pages') 
     return intNumberOfPage
 }
 
 async function processNewsByPage(url,intPage){
   
+  // fetch(url)
+  // .then(res => res.text())
+  // .then(body => wrapHtmlParser(body,intPage))  
   let res = await fetch(url)
   let body = await res.text()
   wrapHtmlParser(body,intPage)
@@ -132,25 +124,23 @@ async function processNewsByPage(url,intPage){
 
 async function processPassNews(intPage){
   for(let i =0; i < intPage  ; i++){
-      let paranews = `&symbol=${stockName}&currentpage=${i}`
-      
-      console.log('Process ', paranews)
+      let paranews = `&from=${fd}%2F${fm}%2F${fy}&to=${td}%2F${tm}%2F${ty}&currentpage=${i}`
+
       await processNewsByPage(urlnews+paranews,i)
 
-      // fetch(urlnews+paranews)
-      //     .then(res => res.text())
-      //     .then(body => wrapHtmlParser(body,i+1) ) 
   }
   
 }
 
+
+
 function getAllNumberOfPageAndProcess(){
-    let paranews =  `&symbol=${stockName}&currentpage=0`
-    console.log(urlnews+paranews)
+    let paranews =  `&from=${fd}%2F${fm}%2F${fy}&to=${td}%2F${tm}%2F${ty}&currentpage=0`
+    console.log(`from=${fd}/${fm}/${fy} to=${td}/${tm}/${ty}`)
     fetch(urlnews+paranews)
     .then(res => res.text())
-    .then(body => substringTogetPageNumber(body) )  
-    .then(intPage => processPassNews(intPage)) 
+    .then(body => substringTogetPageNumber(body))
+    .then(intPage => processPassNews(intPage)) //
 }
 
 
